@@ -148,8 +148,9 @@ export function formatTicketNumber(number, digitMode = 6) {
  * @returns {Array<{tier, color, packCount, ticketsUsed, maxTickets, overflow: bool}>}
  */
 export function checkCollisionRisk(packTiers, packCounts, digitMode = 6) {
-  const sequenceDigits = digitMode - 3;
-  const maxSequence = Math.pow(10, sequenceDigits) - 1;
+  // Each 2-digit seed owns 10,000 tickets (e.g. seed 39 → 390000–399999)
+  // Overflow only if ticketsPerColor > 9,999 (crosses into next seed range)
+  const maxSequence = 9999;
 
   return packTiers.map(tier => {
     const count = packCounts[tier.id] || 0;
