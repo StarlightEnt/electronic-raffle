@@ -213,8 +213,41 @@ export default function Setup() {
                   <input type="date" value={settingsForm.date_end||''} onChange={e => setSettingsForm({...settingsForm, date_end: e.target.value})} /></div>
               </div>
               <div className="form-row">
-                <div><label>Logo URL</label>
-                  <input value={settingsForm.logo_url||''} onChange={e => setSettingsForm({...settingsForm, logo_url: e.target.value})} placeholder="https://..." /></div>
+                <div>
+                  <label>Logo</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {settingsForm.logo_url && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <img src={settingsForm.logo_url} alt="Logo preview"
+                          style={{ height: 64, width: 64, objectFit: 'contain', background: 'var(--surface3)', borderRadius: 6, padding: 4 }} />
+                        <button type="button" className="btn-danger btn-sm"
+                          onClick={() => setSettingsForm({...settingsForm, logo_url: ''})}>
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label style={{ all: 'unset', cursor: 'pointer' }}>
+                        <span style={{ display: 'inline-block', padding: '6px 14px', borderRadius: 6, border: '1px solid var(--border2)', fontSize: 13, cursor: 'pointer', background: 'var(--surface3)', color: 'var(--text)' }}>
+                          📁 Choose File
+                        </span>
+                        <input type="file" accept="image/png,image/jpeg,image/gif,image/webp"
+                          style={{ display: 'none' }}
+                          onChange={e => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = ev => setSettingsForm(f => ({...f, logo_url: ev.target.result}));
+                            reader.readAsDataURL(file);
+                          }} />
+                      </label>
+                      <span style={{ fontSize: 12, color: 'var(--muted)' }}>or paste a URL:</span>
+                      <input value={settingsForm.logo_url?.startsWith('data:') ? '' : (settingsForm.logo_url||'')}
+                        onChange={e => setSettingsForm({...settingsForm, logo_url: e.target.value})}
+                        placeholder="https://..." style={{ flex: 1, minWidth: 160 }} />
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="form-row">
                 <div><label>Accent Color</label>
