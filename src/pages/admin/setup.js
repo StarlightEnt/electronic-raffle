@@ -156,7 +156,7 @@ export default function Setup() {
   // Compute collision risk warnings
   const warnings = tiers.map(tier => {
     const ticketsPerColor = tier.ticket_count / 6;
-    const maxTickets = Math.pow(10, (tournament?.digit_mode || 6) - 3) - 1;
+    const maxTickets = 9999; // seed owns 390000–399999 = 10,000 tickets; overflow at 9,999
     const used = tier.pack_quantity * ticketsPerColor;
     const pct = Math.round((used / maxTickets) * 100);
     return { tier, used, maxTickets, pct, overflow: used > maxTickets };
@@ -172,7 +172,7 @@ export default function Setup() {
         <div className="page-header">
           <div>
             <h1 className="page-title">TOURNAMENT SETUP</h1>
-            <p className="page-subtitle">{tournament?.name} {tournament?.year}</p>
+            <p className="page-subtitle">{tournament?.name}</p>
           </div>
         </div>
 
