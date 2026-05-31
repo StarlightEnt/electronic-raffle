@@ -52,7 +52,7 @@ function drawCard(doc, params, ticketImages) {
   doc.rect(0, 0, PAGE_W, PAGE_H).fill('#FFFFFF');
 
   // ── Logo top-left ─────────────────────────────────────────────────
-  const logoSize = 95;
+  const logoSize = 80;
   let logoRight = M;
   if (logoBuffer) {
     try {
@@ -62,23 +62,25 @@ function drawCard(doc, params, ticketImages) {
   }
 
   // ── Price top-right ───────────────────────────────────────────────
-  doc.font('Helvetica-Bold').fontSize(58).fillColor('#F4A460');
-  doc.text(`$${Math.round(price)}`, PAGE_W - M - 140, M - 8,
-    { width: 140, align: 'right', lineBreak: false });
+  doc.font('Helvetica-Bold').fontSize(52).fillColor('#F4A460');
+  doc.text(`$${Math.round(price)}`, PAGE_W - M - 130, M - 6,
+    { width: 130, align: 'right', lineBreak: false });
 
   // ── Pack name center (light blue) ─────────────────────────────────
-  const headW = PAGE_W - logoRight - 150;
-  doc.font('Helvetica-Bold').fontSize(42).fillColor('#7EC8E3');
+  const headW = PAGE_W - logoRight - 140;
+  doc.font('Helvetica-Bold').fontSize(38).fillColor('#7EC8E3');
   doc.text(tierName, logoRight, M + 2, { width: headW, align: 'center', lineBreak: false });
 
   // ── "TICKET TRACKER" (purple) ─────────────────────────────────────
-  doc.font('Helvetica-Bold').fontSize(30).fillColor('#8B2FC9');
-  doc.text('TICKET TRACKER', logoRight, M + 48, { width: headW, align: 'center', lineBreak: false });
+  doc.font('Helvetica-Bold').fontSize(26).fillColor('#8B2FC9');
+  doc.text('TICKET TRACKER', logoRight, M + 44, { width: headW, align: 'center', lineBreak: false });
 
-  // ── Ticket strip area ─────────────────────────────────────────────
+  // ── Ticket strip area — starts right after header text, not logo ──
+  const headerBottom = M + 44 + 30; // top + TICKET TRACKER y + approx line height
   const labelW = 48;
-  const stripTop = M + logoSize + 10;
-  const stripH = PAGE_H - stripTop - M - 22;
+  const footerH = 18;
+  const stripTop = headerBottom + 4;
+  const stripH = PAGE_H - stripTop - M - footerH;
   const stripX = M + labelW + 2;
   const stripW = PAGE_W - stripX - M;
 
@@ -140,9 +142,11 @@ function drawCard(doc, params, ticketImages) {
   doc.text('NUMBER', M, endLabelY + 9, { width: labelW, align: 'center', lineBreak: false });
 
   // ── Footer ────────────────────────────────────────────────────────
-  const footerY = PAGE_H - M - 14;
+  const footerY = stackOffsetY + totalStackH + 6;
+  // Strip trailing year if tournamentName already contains it (avoids "2027 2027")
+  const cleanName = tournamentName.replace(/\s+\d{4}$/, '');
   doc.font('Helvetica-Bold').fontSize(8).fillColor('#8B2FC9');
-  doc.text(tournamentName.toUpperCase(), M, footerY,
+  doc.text(cleanName.toUpperCase(), M, footerY,
     { width: PAGE_W - M * 2, align: 'center', lineBreak: false });
 
   doc.font('Helvetica-Bold').fontSize(8).fillColor('#333333');
