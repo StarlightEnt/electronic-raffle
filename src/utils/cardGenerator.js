@@ -1,17 +1,19 @@
 /**
  * Electronic Raffle — Ticket Tracker Card Generator
  *
- * Design:
+ * Design (finalized via preview iterations):
  *   - Landscape half-letter (8.5" × 5.5")
  *   - Logo: top-left, 40% card height
  *   - "30 Tickets": Nunito Bold, light→dark blue gradient
- *   - "TICKET TRACKER": Copperplate Gothic Bold, purple with layered
- *     lavender→near-white→purple 3D block shadow
- *   - Price: Nunito Bold, peach, rotated -8°
+ *   - "TICKET TRACKER": Copperplate Gothic Bold, purple with
+ *     4-layer shadow: lavender→lavender→light lavender→near-white→purple
+ *   - Price: Nunito Bold, peach, rotated -8°, dynamically sized to fit
  *   - Ticket header labels: Constantia, black, vertically centered
- *   - Numbers: Constantia, ticket color, hairline black outline
- *   - 3 ticket rows per color with small gap
- *   - Ticket strip anchored at y=188 (just above vertical midline)
+ *   - Numbers: Constantia, ticket color, 0.25pt black outline
+ *   - START/END labels: Constantia, bold purple (stroke+fill)
+ *   - 3 ticket rows per color, 4pt gap between rows
+ *   - Strip anchored at y=188 (just above vertical midline)
+ *   - Footer: tournament name centered purple, serial right, both Constantia 8pt
  */
 
 import PDFDocument from 'pdfkit';
@@ -52,10 +54,6 @@ function loadTicketImages() {
   return images;
 }
 
-/**
- * Draw "TICKET TRACKER" with layered 3D shadow effect.
- * Layers bottom→top: lavender → light lavender → near-white → main purple
- */
 function draw3DText(doc, text, x, y, w, fontSize, mainColor) {
   doc.font('Copperplate').fontSize(fontSize);
   const shadowColors = {
@@ -86,7 +84,7 @@ function drawCard(doc, params, ticketImages) {
   const ticketH = ticketW / TICKET_ASPECT;
   const rowGap = 4;
   const totalStackH = ticketH * 3 + rowGap * 2;
-  const stripTop = 188;  // anchored just above vertical midline
+  const stripTop = 188;
   const stripBottom = stripTop + totalStackH;
 
   // ── LOGO — top-left, 40% card height ─────────────────────────────
@@ -119,9 +117,16 @@ function drawCard(doc, params, ticketImages) {
   const priceBoxW = 100;
   const priceX = PAGE_W - M - priceBoxW;
   const priceY = M;
+  // Dynamic font size — measure actual width and scale to fit box
+  const maxPriceFontSize = 62;
+  doc.font('Nunito').fontSize(maxPriceFontSize);
+  const actualPriceW = doc.widthOfString(priceStr);
+  const priceFontSize = actualPriceW > priceBoxW
+    ? Math.floor(maxPriceFontSize * (priceBoxW / actualPriceW))
+    : maxPriceFontSize;
   doc.save();
   doc.rotate(-8, { origin: [priceX + priceBoxW / 2, priceY + 35] });
-  doc.font('Nunito').fontSize(62).fillColor('#F4A460');
+  doc.font('Nunito').fontSize(priceFontSize).fillColor('#F4A460');
   doc.text(priceStr, priceX, priceY, { width: priceBoxW, align: 'center', lineBreak: false });
   doc.restore();
 
@@ -135,7 +140,7 @@ function drawCard(doc, params, ticketImages) {
     const y2 = stripTop + ticketH + rowGap;
     const y3 = stripTop + ticketH * 2 + rowGap * 2;
 
-    // Draw 3 ticket stub images
+    // 3 stacked ticket stub images at natural aspect ratio
     if (imgBuf) {
       doc.image(imgBuf, tx, y1, { width: ticketW, height: ticketH });
       doc.image(imgBuf, tx, y2, { width: ticketW, height: ticketH });
@@ -170,7 +175,7 @@ function drawCard(doc, params, ticketImages) {
       { width: ticketW, align: 'center', lineBreak: false, fill: true, stroke: true });
   });
 
-  // ── START/END LABELS — left of strip, Constantia, bold purple ────
+  // ── START/END LABELS — Constantia, bold purple ────────────────────
   const y2 = stripTop + ticketH + rowGap;
   const y3 = stripTop + ticketH * 2 + rowGap * 2;
   doc.font('Constantia').fontSize(8).fillColor('#8B2FC9')
@@ -184,11 +189,13 @@ function drawCard(doc, params, ticketImages) {
   doc.text('NUMBER', M, y3 + ticketH / 2,
     { width: labelW, align: 'center', lineBreak: false, fill: true, stroke: true });
 
-  // ── FOOTER — tournament name centered, serial right ───────────────
+  // ── FOOTER ────────────────────────────────────────────────────────
   const footerY = stripBottom + 5;
+  // Strip duplicate year e.g. "...2027 2027" → "...2027"
+  const cleanFooterName = tournamentName.replace(/(\d{4})\s+\1$/, '$1');
   doc.font('Constantia').fontSize(8).fillColor('#8B2FC9')
      .strokeColor('#8B2FC9').lineWidth(0.3);
-  doc.text(tournamentName, M, footerY,
+  doc.text(cleanFooterName, M, footerY,
     { width: PAGE_W - M * 2, align: 'center', lineBreak: false, fill: true, stroke: true });
   doc.font('Constantia').fontSize(8).fillColor('#333333')
      .strokeColor('#333333').lineWidth(0);
