@@ -24,6 +24,7 @@ export default function Setup() {
   const [collisionRisk, setCollisionRisk] = useState([]);
   const [newTier, setNewTier] = useState({ name: '', ticket_count: 120, price: 20, pack_quantity: 50 });
   const [showAddTier, setShowAddTier] = useState(false);
+  const [editingTier, setEditingTier] = useState(null); // { id, name, ticket_count, price, pack_quantity }
   const [importCsv, setImportCsv] = useState('');
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
@@ -124,6 +125,20 @@ export default function Setup() {
       body: JSON.stringify({ id }),
     });
     if (res.ok) load();
+    else { const d = await res.json(); setMsg({ type: 'error', text: d.error }); }
+  }
+
+  async function saveTier() {
+    if (editingTier.ticket_count % 6 !== 0) {
+      setMsg({ type: 'error', text: 'Ticket count must be a multiple of 6.' });
+      return;
+    }
+    const res = await fetch(`/api/admin/pack-tiers?tournamentId=${tournamentId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editingTier),
+    });
+    if (res.ok) { setEditingTier(null); load(); }
     else { const d = await res.json(); setMsg({ type: 'error', text: d.error }); }
   }
 
@@ -357,28 +372,56 @@ export default function Setup() {
             <tbody>
               {tiers.map(tier => {
                 const w = warnings.find(x => x.tier.id === tier.id);
+                const isEditing = editingTier?.id === tier.id;
                 return (
                   <tr key={tier.id}>
-                    <td style={{ fontWeight: 500 }}>{tier.name}</td>
-                    <td>{tier.ticket_count}</td>
-                    <td style={{ color: 'var(--muted)' }}>{tier.ticket_count / 6}</td>
-                    <td><span className="badge badge-gold">${tier.price}</span></td>
-                    <td>{tier.pack_quantity}</td>
-                    <td>
-                      {w && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ flex: 1, height: 6, background: 'var(--surface3)', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${Math.min(w.pct, 100)}%`, background: w.overflow ? 'var(--red)' : w.pct > 70 ? 'var(--gold)' : 'var(--green)', borderRadius: 3 }} />
+                    {isEditing ? (
+                      <>
+                        <td><input value={editingTier.name} onChange={e => setEditingTier({...editingTier, name: e.target.value})} style={{ fontSize: 13 }} /></td>
+                        <td><input type="number" min={6} step={6} value={editingTier.ticket_count} onChange={e => setEditingTier({...editingTier, ticket_count: parseInt(e.target.value)})} style={{ fontSize: 13, width: 80 }} /></td>
+                        <td style={{ color: 'var(--muted)', fontSize: 13 }}>{Math.floor(editingTier.ticket_count / 6)}</td>
+                        <td><input type="number" step="0.01" value={editingTier.price} onChange={e => setEditingTier({...editingTier, price: parseFloat(e.target.value)})} style={{ fontSize: 13, width: 80 }} /></td>
+                        <td><input type="number" min={1} value={editingTier.pack_quantity} onChange={e => setEditingTier({...editingTier, pack_quantity: parseInt(e.target.value)})} style={{ fontSize: 13, width: 80 }} /></td>
+                        <td></td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn-primary btn-sm" onClick={saveTier}>Save</button>
+                            <button className="btn-ghost btn-sm" onClick={() => setEditingTier(null)}>Cancel</button>
                           </div>
-                          <span style={{ fontSize: 12, color: w.overflow ? 'var(--red)' : 'var(--muted)', minWidth: 36 }}>{w.pct}%</span>
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      {!packsGenerated && (
-                        <button className="btn-danger btn-sm" onClick={() => deleteTier(tier.id)}>Remove</button>
-                      )}
-                    </td>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ fontWeight: 500 }}>{tier.name}</td>
+                        <td>{tier.ticket_count}</td>
+                        <td style={{ color: 'var(--muted)' }}>{tier.ticket_count / 6}</td>
+                        <td><span className="badge badge-gold">${tier.price}</span></td>
+                        <td>{tier.pack_quantity}</td>
+                        <td>
+                          {w && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ flex: 1, height: 6, background: 'var(--surface3)', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${Math.min(w.pct, 100)}%`, background: w.overflow ? 'var(--red)' : w.pct > 70 ? 'var(--gold)' : 'var(--green)', borderRadius: 3 }} />
+                              </div>
+                              <span style={{ fontSize: 12, color: w.overflow ? 'var(--red)' : 'var(--muted)', minWidth: 36 }}>{w.pct}%</span>
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {!packsGenerated && (
+                              <button className="btn-ghost btn-sm" onClick={() => setEditingTier({...tier})}>Edit</button>
+                            )}
+                            {packsGenerated && (
+                              <button className="btn-ghost btn-sm" onClick={() => setEditingTier({...tier})}>Edit Qty</button>
+                            )}
+                            {!packsGenerated && (
+                              <button className="btn-danger btn-sm" onClick={() => deleteTier(tier.id)}>Remove</button>
+                            )}
+                          </div>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 );
               })}
