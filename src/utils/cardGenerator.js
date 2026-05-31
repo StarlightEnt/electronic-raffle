@@ -1,6 +1,17 @@
 /**
  * Electronic Raffle — Ticket Tracker Card Generator
- * Layout anchored to ticket strip position.
+ *
+ * Design:
+ *   - Landscape half-letter (8.5" × 5.5")
+ *   - Logo: top-left, 40% card height
+ *   - "30 Tickets": Nunito Bold, light→dark blue gradient
+ *   - "TICKET TRACKER": Copperplate Gothic Bold, purple with layered
+ *     lavender→near-white→purple 3D block shadow
+ *   - Price: Nunito Bold, peach, rotated -8°
+ *   - Ticket header labels: Constantia, black, vertically centered
+ *   - Numbers: Constantia, ticket color, hairline black outline
+ *   - 3 ticket rows per color with small gap
+ *   - Ticket strip anchored at y=188 (just above vertical midline)
  */
 
 import PDFDocument from 'pdfkit';
@@ -19,8 +30,8 @@ const COLOR_TEXT = {
 };
 
 const TICKET_ASPECT = 256 / 132;
-const PAGE_W = 8.5 * 72;  // 612
-const PAGE_H = 5.5 * 72;  // 396
+const PAGE_W = 8.5 * 72;  // 612pts
+const PAGE_H = 5.5 * 72;  // 396pts
 const M = 14;
 
 const FONT_DIR = path.join(process.cwd(), 'public', 'fonts');
@@ -41,11 +52,21 @@ function loadTicketImages() {
   return images;
 }
 
-function draw3DText(doc, text, x, y, w, fontSize, mainColor, shadowColor, layers = 4) {
+/**
+ * Draw "TICKET TRACKER" with layered 3D shadow effect.
+ * Layers bottom→top: lavender → light lavender → near-white → main purple
+ */
+function draw3DText(doc, text, x, y, w, fontSize, mainColor) {
   doc.font('Copperplate').fontSize(fontSize);
-  for (let i = layers; i >= 1; i--) {
-    doc.fillColor(shadowColor);
-    doc.text(text, x + i * 0.8, y + i * 0.8, { width: w, align: 'center', lineBreak: false });
+  const shadowColors = {
+    4: '#C9A0DC',  // lavender
+    3: '#C9A0DC',  // lavender
+    2: '#DEC4EC',  // light lavender
+    1: '#F2EEEE',  // near-white highlight
+  };
+  for (let i = 4; i >= 1; i--) {
+    doc.fillColor(shadowColors[i]);
+    doc.text(text, x + i * 0.9, y + i * 0.9, { width: w, align: 'center', lineBreak: false });
   }
   doc.fillColor(mainColor);
   doc.text(text, x, y, { width: w, align: 'center', lineBreak: false });
@@ -57,82 +78,78 @@ function drawCard(doc, params, ticketImages) {
   // White background
   doc.rect(0, 0, PAGE_W, PAGE_H).fill('#FFFFFF');
 
-  // ── STEP 1: Calculate ticket strip position (the anchor) ──────────
+  // ── TICKET STRIP — the anchor ─────────────────────────────────────
   const labelW = 50;
-  const footerH = 16;
   const stripX = M + labelW + 2;
   const stripW = PAGE_W - stripX - M;
   const ticketW = stripW / 6;
-  const ticketH = ticketW / TICKET_ASPECT;  // ~45.7pts
+  const ticketH = ticketW / TICKET_ASPECT;
   const rowGap = 4;
   const totalStackH = ticketH * 3 + rowGap * 2;
+  const stripTop = 188;  // anchored just above vertical midline
+  const stripBottom = stripTop + totalStackH;
 
-  // Pin strip bottom 6pts above footer zone
-  const stripBottom = PAGE_H - M - footerH - 6;
-  const stripTop = stripBottom - totalStackH;  // ~214.8pts from top
-
-  // ── STEP 2: Logo — 40% card height, top-left ─────────────────────
-  const logoH = PAGE_H * 0.40;  // ~158pts
-  const logoAspect = 281 / 323; // portrait logo aspect
-  const logoW = logoH * logoAspect; // ~137pts
+  // ── LOGO — top-left, 40% card height ─────────────────────────────
+  const logoH = PAGE_H * 0.40;
+  const logoAspect = 281 / 323;
+  const logoW = logoH * logoAspect;
   if (logoBuffer) {
     try { doc.image(logoBuffer, M, M, { width: logoW, height: logoH }); } catch(e) {}
   }
 
-  // ── STEP 3: Title block — centered in space right of logo ─────────
-  // Space to right of logo, above ticket strip
+  // ── TITLE BLOCK — right of logo, vertically centered above strip ──
   const titleX = M + logoW + 12;
-  const titleW = PAGE_W - titleX - M - 90; // leave room for price top-right
-  // Vertically center the two title lines in the space above the strip
-  const spaceAbove = stripTop - M; // ~200pts
-  const titleBlockH = 46 + 34; // approx height of both lines
+  const titleW = PAGE_W - titleX - M - 75;
+  const spaceAbove = stripTop - M;
+  const titleBlockH = 52 + 36;
   const titleY = M + (spaceAbove - titleBlockH) / 2;
 
-  // "30 Tickets" — Nunito Bold, gradient blue
+  // "30 Tickets" — Nunito Bold, light→dark blue gradient
   const grad = doc.linearGradient(titleX, titleY, titleX + titleW, titleY);
   grad.stop(0, '#87CEEB');
   grad.stop(1, '#1565C0');
   doc.font('Nunito').fontSize(46).fillColor(grad);
   doc.text(tierName, titleX, titleY, { width: titleW, align: 'center', lineBreak: false });
 
-  // "TICKET TRACKER" — Copperplate, 3D purple shadow
-  const ttY = titleY + 52;
-  draw3DText(doc, 'TICKET TRACKER', titleX, ttY, titleW, 30, '#8B2FC9', '#3D0066', 4);
+  // "TICKET TRACKER" — Copperplate, 3D lavender→white→purple shadow
+  draw3DText(doc, 'TICKET TRACKER', titleX, titleY + 54, titleW, 36, '#8B2FC9');
 
-  // ── STEP 4: Price — top-right, Nunito, peach, rotated -8° ────────
+  // ── PRICE — top-right, Nunito, peach, rotated -8° ─────────────────
   const priceStr = `$${Math.round(price)}`;
   const priceBoxW = 100;
-  const priceBoxH = 70;
   const priceX = PAGE_W - M - priceBoxW;
   const priceY = M;
   doc.save();
-  doc.rotate(-8, { origin: [priceX + priceBoxW / 2, priceY + priceBoxH / 2] });
+  doc.rotate(-8, { origin: [priceX + priceBoxW / 2, priceY + 35] });
   doc.font('Nunito').fontSize(62).fillColor('#F4A460');
   doc.text(priceStr, priceX, priceY, { width: priceBoxW, align: 'center', lineBreak: false });
   doc.restore();
 
-  // ── STEP 5: Draw ticket strip ─────────────────────────────────────
+  // ── TICKET STRIP ──────────────────────────────────────────────────
   COLORS_ORDER.forEach((color, i) => {
     const range = colorRanges[color];
     if (!range) return;
     const tx = stripX + i * ticketW;
     const imgBuf = ticketImages[color];
-
     const y1 = stripTop;
     const y2 = stripTop + ticketH + rowGap;
     const y3 = stripTop + ticketH * 2 + rowGap * 2;
 
+    // Draw 3 ticket stub images
     if (imgBuf) {
       doc.image(imgBuf, tx, y1, { width: ticketW, height: ticketH });
       doc.image(imgBuf, tx, y2, { width: ticketW, height: ticketH });
       doc.image(imgBuf, tx, y3, { width: ticketW, height: ticketH });
     }
 
-    // Row 1: Color header — Constantia, black, size 9, bold
-    doc.font('Constantia').fontSize(9).fillColor('#000000');
-    doc.text(color.toUpperCase(), tx, y1 + ticketH * 0.20,
+    // Row 1: Color label — Constantia, black, vertically centered
+    const headerTextBlockH = 21;
+    const headerTextY = y1 + (ticketH - headerTextBlockH) / 2;
+    doc.font('Constantia').fontSize(9).fillColor('#000000')
+       .strokeColor('#000000').lineWidth(0);
+    doc.text(color.toUpperCase(), tx, headerTextY,
       { width: ticketW, align: 'center', lineBreak: false });
-    doc.text('TICKETS', tx, y1 + ticketH * 0.20 + 12,
+    doc.text('TICKETS', tx, headerTextY + 12,
       { width: ticketW, align: 'center', lineBreak: false });
 
     // Row 2: Start number — Constantia, ticket color, hairline outline
@@ -153,23 +170,28 @@ function drawCard(doc, params, ticketImages) {
       { width: ticketW, align: 'center', lineBreak: false, fill: true, stroke: true });
   });
 
-  // ── STEP 6: START/END labels left of strip ────────────────────────
+  // ── START/END LABELS — left of strip, Constantia, bold purple ────
   const y2 = stripTop + ticketH + rowGap;
   const y3 = stripTop + ticketH * 2 + rowGap * 2;
+  doc.font('Constantia').fontSize(8).fillColor('#8B2FC9')
+     .strokeColor('#8B2FC9').lineWidth(0.4);
+  doc.text('START', M, y2 + ticketH / 2 - 9,
+    { width: labelW, align: 'center', lineBreak: false, fill: true, stroke: true });
+  doc.text('NUMBER', M, y2 + ticketH / 2,
+    { width: labelW, align: 'center', lineBreak: false, fill: true, stroke: true });
+  doc.text('END', M, y3 + ticketH / 2 - 9,
+    { width: labelW, align: 'center', lineBreak: false, fill: true, stroke: true });
+  doc.text('NUMBER', M, y3 + ticketH / 2,
+    { width: labelW, align: 'center', lineBreak: false, fill: true, stroke: true });
 
-  doc.font('Constantia').fontSize(7).fillColor('#8B2FC9');
-  doc.text('START', M, y2 + ticketH / 2 - 9, { width: labelW, align: 'center', lineBreak: false });
-  doc.text('NUMBER', M, y2 + ticketH / 2, { width: labelW, align: 'center', lineBreak: false });
-  doc.text('END', M, y3 + ticketH / 2 - 9, { width: labelW, align: 'center', lineBreak: false });
-  doc.text('NUMBER', M, y3 + ticketH / 2, { width: labelW, align: 'center', lineBreak: false });
-
-  // ── STEP 7: Footer ────────────────────────────────────────────────
-  const footerY = stripBottom + 6;
-  const cleanName = tournamentName.replace(/\s+\d{4}$/, '');
-  doc.font('Constantia').fontSize(8).fillColor('#8B2FC9');
-  doc.text(cleanName.toUpperCase(), M, footerY,
-    { width: PAGE_W - M * 2, align: 'center', lineBreak: false });
-  doc.font('Helvetica-Bold').fontSize(8).fillColor('#333333');
+  // ── FOOTER — tournament name centered, serial right ───────────────
+  const footerY = stripBottom + 5;
+  doc.font('Constantia').fontSize(8).fillColor('#8B2FC9')
+     .strokeColor('#8B2FC9').lineWidth(0.3);
+  doc.text(tournamentName, M, footerY,
+    { width: PAGE_W - M * 2, align: 'center', lineBreak: false, fill: true, stroke: true });
+  doc.font('Constantia').fontSize(8).fillColor('#333333')
+     .strokeColor('#333333').lineWidth(0);
   doc.text(`Serial No: ${serial}`, M, footerY,
     { width: PAGE_W - M * 2, align: 'right', lineBreak: false });
 }
@@ -205,8 +227,12 @@ export async function generateBulkTrackerPDF(packs, config) {
       const colorRanges = typeof pack.color_ranges === 'string'
         ? JSON.parse(pack.color_ranges) : pack.color_ranges;
       drawCard(doc, {
-        serial: pack.serial, tierName: pack.tier_name, price: pack.price,
-        tournamentName: config.tournamentName, colorRanges, logoBuffer: config.logoBuffer,
+        serial: pack.serial,
+        tierName: pack.tier_name,
+        price: pack.price,
+        tournamentName: config.tournamentName,
+        colorRanges,
+        logoBuffer: config.logoBuffer,
       }, ticketImages);
     }
     doc.end();
